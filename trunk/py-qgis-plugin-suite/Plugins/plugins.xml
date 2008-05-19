@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<info-plugin>
+<Plugin>
+	<dir>MFSF</dir>
+	<name>MFSF</name>
+	<description>Multi-filtre for select feature</description>
+	<version>0.1</version>
+	<bool-gui>True</bool-gui>
+   	<stabilite>unsatble</stabilite>
+</Plugin>
+<Plugin>
+    <dir>SSFA</dir>
+    <name>show-selection-attribut</name>
+    <description>show and modif selected feature attributs</description>
+    <version>0.3</version>
+    <bool-gui>True</bool-gui>
+    <stabilite>stable</stabilite>
+</Plugin>
+</info-plugin>

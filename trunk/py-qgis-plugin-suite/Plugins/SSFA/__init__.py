@@ -7,7 +7,7 @@ def description():
   return "Pour voir les attributs en commun de la selection"
 
 def version():
-  return "Version 0.1"
+  return "Version 0.2"
 
 def plugin_type(): #on renvoye le bon type
   return QgisPlugin.UI
