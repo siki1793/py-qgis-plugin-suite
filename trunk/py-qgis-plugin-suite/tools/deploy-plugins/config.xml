@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+	<path>../../Plugins</path>
+	<bool-svn>True</bool-svn>
+	<user-QGIS-path>C:\Documents and Settings\beltegeuse\.qgis\python\plugins</user-QGIS-path>
+</config>
