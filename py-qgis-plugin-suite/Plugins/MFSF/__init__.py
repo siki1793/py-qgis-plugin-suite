@@ -1,13 +1,13 @@
 from filtre_selection import Plugin
 
 def name():
-  return "filtre selection"
+  return "MFSF"
 
 def description():
-  return "Pour selectionner des batiments avec des attributs pour les build class"
+  return "Multi-filtre for select feature"
 
 def version():
-  return "Version 0.3"
+  return "Version 0.1"
 
 def plugin_type(): #on renvoye le bon type
   return QgisPlugin.UI

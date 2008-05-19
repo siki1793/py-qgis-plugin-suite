@@ -17,7 +17,7 @@ def resume():
     print "name : %s" % (name_pl)
     print "description : %s" % (description_pl)
     print "version : %s" % (version)
-    if b_gui:
+    if b_icon:
         print "icon : YES"
     else:
         print "icon : NO"
