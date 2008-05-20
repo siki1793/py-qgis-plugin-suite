@@ -38,6 +38,7 @@ def applyConfig(path):
     ListPlugPath = extractConfig(dir_plugins, svn)
     
     copyPlugins(ListPlugPath, pathQGIS)
+    
 if __name__=="__main__":
     print "Deploy plugins... version : %s" % (version)
     applyConfig('config.xml')
