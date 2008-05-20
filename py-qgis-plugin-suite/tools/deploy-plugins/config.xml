@@ -2,5 +2,5 @@
 <config>
 	<path>../../Plugins</path>
 	<bool-svn>True</bool-svn>
-	<user-QGIS-path>C:\Documents and Settings\beltegeuse\.qgis\python\plugins</user-QGIS-path>
+	<user-QGIS-path>C:\Documents and Settings\agruson\.qgis\python\plugins</user-QGIS-path>
 </config>
