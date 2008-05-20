@@ -19,6 +19,26 @@ def extractConfig(dir_plugins,svn):
         
     return plugins
 
+def copyDossier(path,source): #FIXME: faire la script
+    if os.path.isdir(path):
+        dossiersChild = Testdossiers(path)
+        listeDossier = []
+        while(len(dossiersChild) > 0):
+            listeDossier.extend(dossiersChild)
+            
+    
+def Testdossiers(path):
+    li = []
+    for p in os.listdir(path):
+        print os.path.join(path, p)
+        if os.path.isdir(os.path.join(path, p)):
+            explor(os.path.join(path, p))
+        if os.path.isfile(os.path.join(path, p)):
+            li.append(os.path.join(path, p))
+    print li
+
+    
+
 def copyPlugins(ListPlugPath,pathQGIS):
     if sys.platform == 'win32':
         for (plugins, pluginName) in ListPlugPath:
