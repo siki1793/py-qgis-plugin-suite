@@ -16,4 +16,12 @@
     <bool-gui>True</bool-gui>
     <stabilite>stable</stabilite>
 </Plugin>
+<Plugin>
+    <dir>CFT</dir>
+    <name>Test chevauchement layers</name>
+    <description>Un test pour les chevauchement entre les layers</description>
+    <version>0.1</version>
+    <bool-gui>False</bool-gui>
+    <stabilite>unstable</stabilite>
+</Plugin>
 </info-plugin>
