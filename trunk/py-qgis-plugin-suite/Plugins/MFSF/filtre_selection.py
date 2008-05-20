@@ -4,6 +4,8 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from interface import *
 
+#FIXME: erreur selection 
+
 class Plugin:
 
   # ----------------------------------------- #
@@ -38,7 +40,7 @@ class Plugin:
         
         QObject.connect(self.wMain.layerCombo,SIGNAL('currentIndexChanged (int)'),self.readlayercolumns)
         QObject.connect(self.wMain.ajouterFiltre,SIGNAL("clicked()"),self.ajouterfiltre)
-        
+        QObject.connect(self.wMain.appliquerFiltre,SIGNAL("clicked()"),self.appliquerfiltre)
         
         self.__initwMain()
         self.wMain.show()
@@ -59,16 +61,53 @@ class Plugin:
         for (k,attr) in fieldmap.iteritems():
             self.wMain.attributeCombo.addItem(attr.name())
             
+    def appliquerfiltre(self):
+        self.__appliquerfiltrePostGis()
+        
+    def __appliquerfiltrePostGis(self):
+        req = self.filtres[0].postGisRequet()
+        for filtre in self.filtres[1:]:
+            req = " AND " + filtre.postGisRequet()
+        #Notre requette est build
+        myLayer = self.layermap[self.wMain.layerCombo.currentText()]
+        myLayer.setSubsetString(req)
+        myProvider = myLayer.getDataProvider()
+        
+        selectedFeatures = []
+        f = QgsFeature()
+                
+        while(myProvider.getNextFeature(f)):
+            selectedFeatures.append(f.featureId())
+        QMessageBox.information(self.iface.getMainWindow(),"Find by Attribute",str(len(selectedFeatures)))
+        myLayer.setSelectedFeatures(selectedFeatures)
+        
+        
     def ajouterfiltre(self):
-        self.__ajouterfiltretree()
+        try:
+            self.__ajouterfiltreinterne()
+        except:
+            pass
+        else:
+            self.__ajouterfiltretree()
     
+    def __ajouterfiltreinterne(self):
+        self.filtres.append(Filtre(self.wMain.attributeCombo.currentText(),self.wMain.operator.currentText(),self.wMain.valueLine.displayText()))
+        
+        
     def __ajouterfiltretree(self):
         self.wMain.treeFiltre.addTopLevelItem(QTreeWidgetItem([self.wMain.attributeCombo.currentText(),self.wMain.operator.currentText(),self.wMain.valueLine.displayText() ]))
     
                 
         
-        
+class Filtre:
+    def __init__(self, attrName, operator, value):
+        self.attr = attrName
+        self.op = operator
+        self.value = value
     
+    def postGisRequet(self):
+        requet = "(%s%s%s)" %(self.attr,self.op,self.value)
+        return requet
         
     
                 
