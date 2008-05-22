@@ -176,11 +176,10 @@ class tdbTransformer:
             
         walltex = self.__getLayer("walltexture")
         idHeight = self.__getIdFeild("height", walltex)
+        idWidth = self.__getIdFeild("width", walltex)
         idMeterHeight = self.__getIdFeild("meterheight", walltex)
+        idMeterWidth = self.__getIdFeild("meterwidth", walltex)
         idFileName = self.__getIdFeild("filename", walltex)
-        
-        pb=progressbarClass(walltex.GetFeatureCount(),"*")
-        count = 0
         
         #On reste le provider
         walltex.ResetReading() 
@@ -190,37 +189,77 @@ class tdbTransformer:
         self.__createArboOutputDir(outputDir)
         os.chdir(outputDir)
         
-        while(not (feature is None)):
-            height = feature.GetFieldAsDouble(idHeight)
-            meterheight = feature.GetFieldAsDouble(idMeterHeight)
-            inputFileName = feature.GetFieldAsString(idFileName)
-        
-            resolution = meterheight / height
-            
-            facteur = resolution / resolutionVoulu
-            #print "la resolution img : %s et la facteur voulu %s" % (resolution,facteur)
-            self.__transformTDBDossierOutput(inputFileName, outputDir, facteur)
-        
-            count += 1
-            pb.progress(count)
-            feature = walltex.GetNextFeature()
-            #feature = None
-            
-    def __transformTDBDossierOutput(self,inputFileName, outputDir, resizeFactor):
-        nomFichier = inputFileName.split("/")[-1]
-        pathTdb = inputFileName.split("/")[:-1]
+        #On prend la premiere feature pour voir la chemin de la tdb
+        inputFileName = feature.GetFieldAsString(idFileName)
         
         tmp = ""
-        for el in pathTdb:
+        for el in inputFileName.split("/")[:-1]:
             tmp += el + os.sep
         
         pathTdb = tmp
-        #On resize la texture
-        resizeTexture(os.path.normpath(pathTdb + "sources" + os.sep + nomFichier), os.path.normpath("tmp" + os.sep + nomFichier), resizeFactor)
-    
-        #On fait le facteur de 2
-        resizeTexturePowerOfTwo(os.path.normpath("tmp" + os.sep + nomFichier), nomFichier)
         
+        pathTdb = os.path.normpath(pathTdb + os.sep  + "sources")
+        if self.__pathExists(pathTdb):
+            pass #C'est bon ...
+        else:
+            nouveauPathTdb = ""
+            while(not self.__pathExists(nouveauPathTdb)):
+                print "ERROR : Le dossier source dans la tdb n'existe pas \nle chemin de la tdb : %s" % (tmp)
+                print "Liste des dossiers dans le dossier de la tdb :"
+                print "----- liste dossier ----"
+                os.chdir(tmp)
+                for el in os.listdir(tmp):
+                    if os.path.isdir(el):
+                        print el
+                print "--- fin liste dossier ---"
+            
+                inp = raw_input("Le sous dossier [.] : ")
+                if (inp == "") or (inp == "."):
+                    nouveauPathTdb = tmp
+                else:
+                    nouveauPathTdb = os.path.normpath(tmp + os.sep + inp)
+            pathTdb = nouveauPathTdb
+            
+            print "Info : le chemin utiliser pour les images dans la tdb : %s" % (pathTdb)
+        
+        pb=progressbarClass(walltex.GetFeatureCount(),"*")
+        count = 0
+        
+        while(not (feature is None)):
+            height = feature.GetFieldAsDouble(idHeight)
+            meterheight = feature.GetFieldAsDouble(idMeterHeight)
+            width = feature.GetFieldAsDouble(idWidth)
+            meterwidth = feature.GetFieldAsDouble(idMeterWidth)
+            inputFileName = feature.GetFieldAsString(idFileName)
+        
+            resolutionY = meterheight / height
+            resolutionX = meterwidth / width
+            
+            facteurX = resolutionX / resolutionVoulu
+            facteurY = resolutionY / resolutionVoulu
+            self.__transformTDBDossierOutput(inputFileName, outputDir, pathTdb, facteurX, facteurY)
+        
+            count += 1
+            pb.progress(count)
+            #feature = walltex.GetNextFeature()
+            feature = None
+            
+    def __transformTDBDossierOutput(self,inputFileName, outputDir, pathTdb,facteurX, facteurY):
+        nomFichier = inputFileName.split("/")[-1]
+        
+        os.chdir(outputDir)
+        #On resize la texture
+        #print "resizeTexture : %s => %s" % (os.path.normpath(pathTdb + os.sep + nomFichier), os.path.normpath(outputDir + os.sep + "tmp" + os.sep + nomFichier))
+        resizeTexture(os.path.normpath(pathTdb + os.sep + nomFichier), os.path.normpath(outputDir + os.sep + "tmp" + os.sep + nomFichier), facteurX, facteurY)
+        
+        if os.path.exists(os.path.normpath(outputDir + os.sep + "tmp" + os.sep + nomFichier)):
+            #print "resizeTexturePowerOfTwo : %s => %s" % (os.path.normpath(outputDir + os.sep + "tmp" + os.sep + nomFichier), os.path.normpath(outputDir + os.sep + nomFichier))
+            #On fait le facteur de 2
+            resizeTexturePowerOfTwo(os.path.normpath(outputDir + os.sep + "tmp" + os.sep + nomFichier),os.path.normpath(outputDir + os.sep + nomFichier))
+        else:
+            print "Fatal Error! surement cette erreur : \nERROR 6: GDALDriver::Create() ... no create method implemented for this format.\nSegmentation fault (core dumped)"
+            sys.exit(1)
+            
     def __pathExists(self,pathName):
         if(pathName==""):
             return False #car os.path.normPath renvoie "." quand on lui passe ""
@@ -234,7 +273,6 @@ class tdbTransformer:
         else:
             print "Error : Le dossier de sortie n'existe de pas, veuillez le creer"
             sys.exit(1)
-            
         if self.__pathExists(os.path.normpath(dir + os.sep + "tmp")):
             pass
         else:
@@ -288,7 +326,7 @@ def resizeTexturePowerOfTwo(inputFileName,outputFileName,limitSize=False,maxSize
 #    
 #    return tr
 
-def resizeTexture(inputFileName,outputFileName,resizeFactor):
+def resizeTexture(inputFileName,outputFileName,resizeFactorX,resizeFactorY):
     gdal.AllRegister()
     gdalDataSet = gdal.Open(inputFileName)
     if gdalDataSet is None:
@@ -299,8 +337,8 @@ def resizeTexture(inputFileName,outputFileName,resizeFactor):
     xsize = gdalDataSet.RasterXSize
     ysize = gdalDataSet.RasterYSize
     del gdalDataSet    
-    newXSize = max(1,math.floor(xsize*resizeFactor+0.5))
-    newYSize = max(1,math.floor(ysize*resizeFactor+0.5))
+    newXSize = max(1,math.floor(xsize*resizeFactorX+0.5))
+    newYSize = max(1,math.floor(ysize*resizeFactorY+0.5))
     
     resizeTextureWithSizes(inputFileName,outputFileName,newXSize,newYSize)
 #    return resizeTextureWithSizes(inputFileName,outputFileName,newXSize,newYSize)
@@ -309,7 +347,7 @@ def resizeTexture(inputFileName,outputFileName,resizeFactor):
 
 def resizeTextureWithSizes(inputFileName,outputFileName,xsize,ysize):
     try:
-        os.system("gdal_zoomPVM -of PNG -s "+str(xsize)+" "+str(ysize)+" -m quality -in "+inputFileName+" -out "+outputFileName+" > /dev/null 2>&1")
+        os.system("gdal_zoomPVM -of PNG -s "+str(xsize)+" "+str(ysize)+" -m quality -in "+inputFileName+" -out "+outputFileName+" > /dev/null 2>&1") #+" > /dev/null 2>&1"
     except:
         print "Fatal error : can't execute this command\n" + "gdal_zoomPVM -of PNG -s "+str(xsize)+" "+str(ysize)+" -m quality -in "+inputFileName+" -out "+outputFileName
         sys.exit(1)
