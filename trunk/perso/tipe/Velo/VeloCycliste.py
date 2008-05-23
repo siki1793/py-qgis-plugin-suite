@@ -3,6 +3,7 @@ class VeloCycliste:
 		self.__nom = nom
 		self.__poids = poids
 		self.__aireFace = aireFace
+		
 	def getPoids(self):
 		return self.__poids
 	
