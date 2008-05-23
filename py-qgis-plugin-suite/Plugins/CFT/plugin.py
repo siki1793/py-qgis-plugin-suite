@@ -23,4 +23,5 @@ class Plugin:
     
     def run(self):
         #Marche pour l'instant que pour DB
+        pass
         
