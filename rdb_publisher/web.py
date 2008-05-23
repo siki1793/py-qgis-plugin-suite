@@ -1,69 +1,19 @@
-############################################################################################
-############################################################################################
-############################################################################################
-############################################################################################
-# Fonction de log au format HTML
-
 #!/usr/bin/env python
 # -*- coding: iso-8859-1 -*- 
 
 #makeHTML.py version 0.8 May 1, 2005 Jerry Stratton
-#
-#part(code="tag" (defaults to paragraph), content="text" style="css style name", id="css id", attributes={named array of attributes for tag}
-#    addAttribute(attributename="name for tag attribute", attributevalue="value for tag attribute")
-#    addPart(code, content, style, id, attributes): adds at end
-#    addPiece(thePart=another part object or "content text")
-#    addPieces(pices=a list of part objects or content texts)
-#    insertPart(code, content, style, id, attributes): inserts at start
-#    insertPiece(thePart)
-#    make(tab="initial tabs")
-#    makePart(code, content, style, id, attributes): returns a part object
-#    __len__: parts support the len() function; return number of pieces directly contained
-#snippet(code (defaults to "em"), content, posttext="text that comes directly after tag", pretext="text that comes directly before tag", style, id, attributes)
-#
-#head(title="text for title of page")
-#body(title="text for main headline", style, id, attributes)
-#page(pieces, style, id, attributes)
-#styleSheet(sheet="url of stylesheet", media="relevance of style sheet")
-#
-#headline(content="text content" (required), level="numerical level", style, id, attributes)
-#
-#table(rows=list of data for rows, style, thStyle="css style for table headers", tdStyle="css style for table cells",
-#        trStyle="css style for table rows", tdBlankStyle="css style for blank cells", firstRowHeader=1--if first row is a header row,
-#        firstColumnHeader=1--if first column is a header column, id, attributes)
-#    addRow(rowList=[list of cells or data], celltype="th or td", cellclass="css style of cells", attributes, style)
-#    addRows(rows=[list of list of cells or data], celltype, cellclass, attributes)
-#    columnCount()
-#tableByColumn(columns=[list of columns], style, thStyle, tdStyle, trStyle, tdBlankStyle, firstRowHeader, firstColumnHeader, id, attributes)
-#    addColumn(columnList=[list of column data or cells], celltype, cellclass, attributes)
-#    addColumns(columns=[list of list of columns or column data], celltype, cellclass, attributes)    
-#tableColumn(column=[list of data or cells for column], celltype, cellclass, firstRowHeader, thStyle, tdBlankStyle, attributes)
-#    addCell(cell="cell or cell content", celltype, cellclass, id, attributes)
-#    addCells(column="list of cells or cell contents", celltype, cellclass, attributes)
-#tableRow(celltype, row=[list of cells or cell data], style, cellclass, firstColumnHeader, thStyle, id, attributes)
-#    addCell(cell="cell or cell content", celltype, cellclass, colspan="numerical span of cell vertically", rowspan="numerical span of cell horizontally")
-#    addCells(cells=[list of cells or cell content])
-#    columnCount()
-#
-#linkedList(links=[list of items of the form [url, name]], outer="outer html tag", inner="inner html tag", style="outer css style",
-#        iclass="inner css style", id, attributes)
-#    addLink(link=[url, name])
-#    addLinks(links)
-#simpleList(items=[list of text items], outer, inner, defaultname="text for marking default entry", default="text of default entry",
-#        style, iclass, id, attributes)
-#    addItem(item="text of item")
-#    addItems(items)
-#
-#image(src="url of image", alt="alternate text for image", align="alignment", style, id, attributes)
-#link(content, url, posttext, pretext, style, id, attributes)
-#
-#form(submitText="text of submit button", pieces, method="submit method", action="form action", submitName="name for submit button", submitAction="javascript for submission"
-#        headline="headline text", headlineLevel (defaults to 2), style, attributes, id)
-#input(type="type of form input", name="name for input", value="default value for input", size="size for input", maxlength="maximum characters accepted",
-#        style, id, attributes)
-#select(name, items, default, style, iclass, id, attributes
-#textinput(name, text, value, size, maxlength, style, id, attributes, type, tableRow=true if this should be a tr row, otherwise it is a paragraph)
-
+import datetime
+import os, sys
+import string
+import re
+import getopt
+import os.path
+import glob
+import copy
+import shutil
+import gdal
+import math
+import datetime
 #basic parts
 class part:
     def __init__(self, code="p", content=None, style=None, id=None, attributes=None):
@@ -817,7 +767,6 @@ class ArTestResultCollection:
         return resultBool
 
 class HTMLArTestResultsHandler:
-
     def __init__(self):                
         date = datetime.datetime.now().strftime("(%a) %d/%m/%Y %Hh%Mmin %Ssec")
         pageTitle =  "Execution : "+date
@@ -1076,3 +1025,47 @@ class HTMLArTestResultsHandler:
         fullPage.addPiece(self.pageBody)
         htmlCodeString = fullPage.make()        
         outputFile.write(htmlCodeString)
+
+def string_multiSplit(string,sepList):
+    stringList = [string]
+    
+    #split
+    for sep in sepList:
+        newStringList = []
+        for s in stringList:
+            splitStringList = s.split(sep)
+            newStringList.extend(splitStringList)
+        stringList = newStringList
+        
+    #suppression des chaines vides   
+    i = 0
+    while(i<len(stringList)):
+        if(stringList[i] == ""):
+            del stringList[i]
+        else:
+            i += 1
+                
+    return stringList   
+
+if __name__ == "__main__":
+    outputDirName = os.curdir
+    arTestResultsHandler = HTMLArTestResultsHandler()
+    fileDateString = datetime.datetime.now().strftime("%Y%m%d_%Hh%Mmin%Ssec")
+    outputHTMLFilename = outputDirName+"/log_texturePublisher_"+fileDateString+".html"#"_"+machineName+"_"+userName+".html"        
+    initHtmlOutputTestResult = TestResult("Initialisation du log de sortie HTML","Fichier : "+outputHTMLFilename)
+    try:
+        outputHTMLFile = open(outputHTMLFilename,"w")    
+    except:
+        initHtmlOutputTestResult += Result(False,ResultComment("Impossible d'ouvrir le fichier en ecriture."))
+        arTestResultsHandler.addTestResult(_initHtmlOutputTestResult)
+        
+    #arTestResultCollection = publishTextureDirectory(inputDirName,outputDirName,outputResolutionString,outputFormat,outputAlphaFormat,outputJPEGQuality,outputRoofJPEGQuality,maxSizePassed,maxSize)
+        
+    ###########################################
+    #Fin de l'execution et ecriture du log de sortie
+    #arTestResultsHandler.addArTestResultCollection(arTestResultCollection) 
+    arTestResultsHandler.saveAsHTML(outputHTMLFile)
+    outputHTMLFile.close()
+    os.chmod(outputHTMLFilename,0777)
+    
+    print "done."

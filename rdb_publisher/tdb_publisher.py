@@ -13,6 +13,7 @@ import os
 import glob
 import copy
 
+from web import *
 
 def printUsage():
     print "rdb_publisher -i tdb_name -r res -o out [-d directory]"
@@ -73,9 +74,9 @@ class progressbarClass:
 
 class connectPostGis:
     def __init__(self,nameDb,type="rdb"):
+        self.__tr = ArTestResult("Connection Base PostGis","Trace d'execution de la connection à la base postGis")
         if nameDb == "":
-            print "Error : no connection give ..."
-            sys.exit(1)
+            tr +=  Result(False,ResultComment("Pas de connection donnee"))
         else:
             if type == "rdb":
                 succes, connector = self.__testConnectionRdb(nameDb)
@@ -90,7 +91,10 @@ class connectPostGis:
             else:
                 self.__con = connector
                 self.__type = type
-        
+    
+    def getTrace(self):
+        return self.__tr
+    
     def __testConnectionRdb(self,rdbName):
         print "Opening RDB source '%s'..." % (rdbName)
         try:
@@ -244,6 +248,7 @@ class tdbTransformer:
             resizeTexturePowerOfTwo(os.path.normpath(outputDir + os.sep + "tmp" + os.sep + nomFichier),os.path.normpath(outputDir + os.sep + nomFichier))
         else:
             print "Error : le Premier zoom ne s'est pas bien passer, voir dans les logs"
+            return Result("")
             
     def __pathExists(self,pathName):
         if(pathName==""):
@@ -389,10 +394,29 @@ if __name__ == '__main__':
     if(not (inputPassed and (tdbOutputDirPassed and resolutionPassed)) ):
         printUsage()
     else:
-        t=tdbTransformer(connectPostGis(inputFileName,"tdb"))
-        if directoryPassed:
-            t.convertToPNG(tdbOutputDir,resolution,directory)
+        arTestResultsHandler = HTMLArTestResultsHandler()
+        fileDateString = datetime.datetime.now().strftime("%Y%m%d_%Hh%Mmin%Ssec")
+        outputHTMLFilename = tdbOutputDir+"/log_tdb_publisher_"+fileDateString+".html"#"_"+machineName+"_"+userName+".html"        
+        initHtmlOutputTestResult = TestResult("Initialisation du log de sortie HTML","Fichier : "+outputHTMLFilename)
+        arTestResultsHandler.addTestResult(initHtmlOutputTestResult)
+        try:
+            outputHTMLFile = open(outputHTMLFilename,"w")    
+        except:
+            initHtmlOutputTestResult += Result(False,ResultComment("Impossible d'ouvrir le fichier en ecriture."))
+            arTestResultsHandler.addTestResult(_initHtmlOutputTestResult)
+            print "Fatal error : ..."
         else:
-            t.convertToPNG(tdbOutputDir,resolution)
+            con = connectPostGis(inputFileName,"tdb")
+            arTestResultsHandler.addArTestResult(t.getTrace())
+            t = tdbTransformer(con)
+            if directoryPassed:
+                arTestResultsHandler.addArTestResultCollection(t.convertToPNG(tdbOutputDir,resolution,directory))
+            else:
+                arTestResultsHandler.addArTestResultCollection(t.convertToPNG(tdbOutputDir,resolution))
+            
+            arTestResultsHandler.saveAsHTML(outputHTMLFile)
+            outputHTMLFile.close()
+            os.chmod(outputHTMLFilename,0777)
+        
         print "Done."
         
