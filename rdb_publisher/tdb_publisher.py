@@ -15,7 +15,7 @@ import copy
 
 
 def printUsage():
-    print "rdb_publisher -i tdb_name -r res -o out"
+    print "rdb_publisher -i tdb_name -r res -o out [-d directory]"
     sys.exit(0)
 
 class progressbarClass: 
@@ -70,8 +70,6 @@ class progressbarClass:
         if percentcomplete == 100: self.f.write("\n")
         self.blockcount=blockcount
         return
-
-
 
 class connectPostGis:
     def __init__(self,nameDb,type="rdb"):
@@ -230,7 +228,7 @@ class tdbTransformer:
             #feature = None
         
         #On suppr la dossier tmp
-        cleanPath(os.path.normpath(outputDir + os.sep  + "tmp"))
+        self.__cleanPath(os.path.normpath(outputDir + os.sep  + "tmp"))
             
     def __transformTDBDossierOutput(self,inputFileName, outputDir, pathTdb,facteurX, facteurY):
         nomFichier = inputFileName.split("/")[-1]
@@ -282,25 +280,27 @@ class tdbTransformer:
             sys.exit(1)
     
         return myLayer
-
-def cleanPath(path):
-    result = True
-    for fileName in os.listdir(path):
-        if os.path.isfile(fileName):
-            try:
-                #print "Beuh! %s" % (fileName)
-                os.remove(os.path.normpath(path + os.sep + fileName))
-            except:
-                print "Error : impossible de supprimer %s dans %s" % (fileName,path) 
-        if os.path.isdir(fileName):
-            print "Error : dossier tmp existant ?"
-            result = False
     
-    if result:
-        try:
-            os.rmdir(path)
-        except:
-            print "Erreur : ne dossier tmp n'a pas pu etre supprimer"
+    def __cleanPath(self,path):
+        result = True
+        for fileName in os.listdir(path):
+            if os.path.isfile(fileName):
+                try:
+                    #print "Beuh! %s" % (fileName)
+                    os.remove(os.path.normpath(path + os.sep + fileName))
+                except:
+                    print "Error : impossible de supprimer %s dans %s" % (fileName,path) 
+            if os.path.isdir(fileName):
+                print "Error : dossier tmp existant ?"
+                result = False
+    
+        if result:
+            try:
+                os.rmdir(path)
+            except:
+                print "Erreur : ne dossier tmp n'a pas pu etre supprimer"
+
+
                 
     
 def resizeTexturePowerOfTwo(inputFileName,outputFileName,limitSize=False,maxSize=1024):
