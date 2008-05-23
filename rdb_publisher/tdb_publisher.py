@@ -11,6 +11,7 @@ import gdal
 import math
 import os
 import glob
+import copy
 
 
 def printUsage():
@@ -167,7 +168,7 @@ class tdbTransformer:
                 print "Error : can't convert your current connection in tdb connection"
                 sys.exit(1) 
     
-    def convertToPNG(self,outputDir,resolutionVoulu):
+    def convertToPNG(self,outputDir,resolutionVoulu,directory="sources"):
         try:
             resolutionVoulu = float(resolutionVoulu)
         except:
@@ -198,35 +199,19 @@ class tdbTransformer:
         
         pathTdb = tmp
         
-        pathTdb = os.path.normpath(pathTdb + os.sep  + "sources")
+        pathTdb = os.path.normpath(pathTdb + os.sep  + directory)
+        
         if self.__pathExists(pathTdb):
-            pass #C'est bon ...
+             print "Info : le chemin utiliser pour les images dans la tdb : %s" % (pathTdb)
         else:
-            nouveauPathTdb = ""
-            while(not self.__pathExists(nouveauPathTdb)):
-                print "ERROR : Le dossier source dans la tdb n'existe pas \nle chemin de la tdb : %s" % (tmp)
-                print "Liste des dossiers dans le dossier de la tdb :"
-                print "----- liste dossier ----"
-                os.chdir(tmp)
-                for el in os.listdir(tmp):
-                    if os.path.isdir(el):
-                        print el
-                print "--- fin liste dossier ---"
-            
-                inp = raw_input("Le sous dossier [.] : ")
-                if (inp == "") or (inp == "."):
-                    nouveauPathTdb = tmp
-                else:
-                    nouveauPathTdb = os.path.normpath(tmp + os.sep + inp)
-            pathTdb = nouveauPathTdb
-            
-            print "Info : le chemin utiliser pour les images dans la tdb : %s" % (pathTdb)
+            print "Error : le chemin utiliser pour les images dans la tdb [%s] n'est pas valide" % (pathTdb)
+            sys.exit(1)
         
         pb=progressbarClass(walltex.GetFeatureCount(),"*")
         count = 0
         
         while(not (feature is None)):
-            height = feature.GetFieldAsDouble(idHeight)
+            height = feature.GetFieos.path.normpath(ldAsDouble(idHeight))
             meterheight = feature.GetFieldAsDouble(idMeterHeight)
             width = feature.GetFieldAsDouble(idWidth)
             meterwidth = feature.GetFieldAsDouble(idMeterWidth)
@@ -241,8 +226,11 @@ class tdbTransformer:
         
             count += 1
             pb.progress(count)
-            #feature = walltex.GetNextFeature()
-            feature = None
+            feature = walltex.GetNextFeature()
+            #feature = None
+        
+        #On suppr la dossier tmp
+        cleanPath(os.path.normpath(outputDir + os.sep  + "tmp"))
             
     def __transformTDBDossierOutput(self,inputFileName, outputDir, pathTdb,facteurX, facteurY):
         nomFichier = inputFileName.split("/")[-1]
@@ -257,8 +245,7 @@ class tdbTransformer:
             #On fait le facteur de 2
             resizeTexturePowerOfTwo(os.path.normpath(outputDir + os.sep + "tmp" + os.sep + nomFichier),os.path.normpath(outputDir + os.sep + nomFichier))
         else:
-            print "Fatal Error! surement cette erreur : \nERROR 6: GDALDriver::Create() ... no create method implemented for this format.\nSegmentation fault (core dumped)"
-            sys.exit(1)
+            print "Error : le Premier zoom ne s'est pas bien passer, voir dans les logs"
             
     def __pathExists(self,pathName):
         if(pathName==""):
@@ -296,9 +283,25 @@ class tdbTransformer:
     
         return myLayer
 
+def cleanPath(path):
+    result = True
+    for fileName in os.listdir(path):
+        if os.path.isfile(fileName):
+            try:
+                #print "Beuh! %s" % (fileName)
+                os.remove(os.path.normpath(path + os.sep + fileName))
+            except:
+                print "Error : impossible de supprimer %s dans %s" % (fileName,path) 
+        if os.path.isdir(fileName):
+            print "Error : dossier tmp existant ?"
+            result = False
     
-    
-    
+    if result:
+        try:
+            os.rmdir(path)
+        except:
+            print "Erreur : ne dossier tmp n'a pas pu etre supprimer"
+                
     
 def resizeTexturePowerOfTwo(inputFileName,outputFileName,limitSize=False,maxSize=1024):
     gdal.AllRegister()
@@ -343,8 +346,6 @@ def resizeTexture(inputFileName,outputFileName,resizeFactorX,resizeFactorY):
     resizeTextureWithSizes(inputFileName,outputFileName,newXSize,newYSize)
 #    return resizeTextureWithSizes(inputFileName,outputFileName,newXSize,newYSize)
 
-    
-
 def resizeTextureWithSizes(inputFileName,outputFileName,xsize,ysize):
     try:
         os.system("gdal_zoomPVM -of PNG -s "+str(xsize)+" "+str(ysize)+" -m quality -in "+inputFileName+" -out "+outputFileName+" > /dev/null 2>&1") #+" > /dev/null 2>&1"
@@ -353,10 +354,9 @@ def resizeTextureWithSizes(inputFileName,outputFileName,xsize,ysize):
         sys.exit(1)
    # print "gdal_zoomPVM -of PNG -s "+str(xsize)+" "+str(ysize)+" -m quality -in "+inputFileName+" -out "+outputFileName
         
-        
 if __name__ == '__main__':
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "i:r:o:", ["help","input==","ressource==","output=="])
+        opts, args = getopt.getopt(sys.argv[1:], "i:r:o:d:", ["help","input==","ressource==","output==","directory=="])
     except getopt.error, msg:
         print msg
         printUsage()
@@ -367,6 +367,8 @@ if __name__ == '__main__':
     tdbOutputDir = ""
     resolutionPassed = False
     resolution = ""
+    directoryPassed = False
+    directory = ""
     
     for opt, arg in opts:
         if opt in ("-i"):
@@ -378,11 +380,19 @@ if __name__ == '__main__':
         elif opt in ("-r"):
             resolutionPassed = True
             resolution = arg
+        elif opt in ("-d"):
+            directoryPassed = True
+            directory = arg
+        else:
+            printUsage()
     
     if(not (inputPassed and (tdbOutputDirPassed and resolutionPassed)) ):
         printUsage()
     else:
         t=tdbTransformer(connectPostGis(inputFileName,"tdb"))
-        t.convertToPNG(tdbOutputDir,resolution)
+        if directoryPassed:
+            t.convertToPNG(tdbOutputDir,resolution,directory)
+        else:
+            t.convertToPNG(tdbOutputDir,resolution)
         print "Done."
         
