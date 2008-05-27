@@ -74,16 +74,16 @@ class progressbarClass:
 
 class connectPostGis:
     def __init__(self,nameDb,type="rdb"):
-        self.__tr = ArTestResult("Connection Base PostGis","Trace d'execution de la connection à la base postGis")
+        self.__tr = TestResult("Connection Base PostGis","Trace d'execution de la connection à la base postGis")
         if nameDb == "":
-            tr +=  Result(False,ResultComment("Pas de connection donnee"))
+            self.__tr +=  Result(False,ResultComment("Pas de connection donnee"))
         else:
             if type == "rdb":
                 succes, connector = self.__testConnectionRdb(nameDb)
             elif type == "tdb":
                 succes, connector = self.__testConnectionTdb(nameDb)
             else:
-                print "Error : no type of postGis db is define"
+                self.__tr += Result(False,ResultComment("no type of postGis db is define"))
                 sys.exit(1)
             
             if not succes:
@@ -96,33 +96,33 @@ class connectPostGis:
         return self.__tr
     
     def __testConnectionRdb(self,rdbName):
-        print "Opening RDB source '%s'..." % (rdbName)
         try:
             rdbDataSource = ogr.Open(rdbName + " user=postgres")
         except:
-            print "Error : unable to open RDB '%s'" % (rdbName)
+            self.__tr += Result(False,ResultComment("Opening RDB source '%s'..." % (rdbName)),ResultComment("Error : unable to open RDB '%s'" % (rdbName)))
             return (False,None)
         
         if(rdbDataSource is None):
-            print "RDB source not found"
+            self.__tr +=  Result(False,ResultComment("Opening RDB source '%s'..." % (rdbName)),ResultComment("RDB source not found"))
             return (False,None)
-        
         else:
+            self.__tr +=  Result(True,ResultComment("Opening RDB source '%s'..." % (rdbName)))
+            
             return (True,rdbDataSource)
     
     def __testConnectionTdb(self,tdbName):
         #Récup du nombre de textures
-        print "Opening TDB source '%s'..." % (tdbName)
         try:
             tdbDataSource = ogr.Open(tdbName+" user=postgres")
         except:
-            print "Error : unable to open TDB '%s'" % (tdbName)
+            self.__tr +=  Result(False,ResultComment("Opening TDB source '%s'..." % (tdbName)), ResultComment("Error : unable to open TDB '%s'" % (tdbName)))
             return (False,None)
         
         if(tdbDataSource is None):
-            print "RDB source not found"
+            self.__tr +=  Result(False,ResultComment("Opening TDB source '%s'..." % (tdbName)), ResultComment("RDB source not found"))
             return (False,None)
         else:
+            self.__tr +=  Result(False,ResultComment("Opening TDB source '%s'..." % (tdbName)))
             return (True,tdbDataSource)
     
     def convertToTdb(self):
@@ -407,13 +407,13 @@ if __name__ == '__main__':
             print "Fatal error : ..."
         else:
             con = connectPostGis(inputFileName,"tdb")
-            arTestResultsHandler.addArTestResult(t.getTrace())
-            t = tdbTransformer(con)
-            if directoryPassed:
-                arTestResultsHandler.addArTestResultCollection(t.convertToPNG(tdbOutputDir,resolution,directory))
-            else:
-                arTestResultsHandler.addArTestResultCollection(t.convertToPNG(tdbOutputDir,resolution))
-            
+            arTestResultsHandler.addTestResult(t.getTrace())
+            if t.getTrace().getResultBool():
+                t = tdbTransformer(con)
+                if directoryPassed:
+                    arTestResultsHandler.addArTestResultCollection(t.convertToPNG(tdbOutputDir,resolution,directory))
+                else:
+                    arTestResultsHandler.addArTestResultCollection(t.convertToPNG(tdbOutputDir,resolution))
             arTestResultsHandler.saveAsHTML(outputHTMLFile)
             outputHTMLFile.close()
             os.chmod(outputHTMLFilename,0777)
