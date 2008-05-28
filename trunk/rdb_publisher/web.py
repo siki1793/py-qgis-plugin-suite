@@ -602,6 +602,12 @@ class ResultComment:
         for comment in testResultComment.getCommentList():
             _testResultComment.addComment(comment)
         return _testResultComment
+    
+    def __repr__(self):
+        strR = ""
+        for el in self.commentList:
+            strR += el + "\n"
+        return strR
 
 # Result : un booleen, des commentaires (errorResultComments) pour expliquer pourquoi le resultat est False,
 # (ajoutes seulement si le resultat est faux) et des commentaires generaux generalResultComments

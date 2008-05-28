@@ -163,8 +163,7 @@ class tdbTransformer:
             self.__con = connection.getConnection()
         self.__initTr = tr
     def getTraceInit(self):
-        return self.__initTr
-    
+        return self.__initTr   
     def convertToPNG(self,outputDir,resolutionVoulu,directory):
         tr = ArTestResult("Convert tdb in PNG","")
         tr2 = TestResult("Initialisation convertion PNG","",self.__con != None,ResultComment("Pas de conection correctement initialisee"))
@@ -211,7 +210,7 @@ class tdbTransformer:
         if not tr.getResultBool(): #Mal passer
             return tr
         
-        os.chdir(outputDir)
+        #os.chdir(outputDir)
         
         #On prend la premiere feature pour voir la chemin de la tdb
         inputFileName = feature.GetFieldAsString(idFileName)
@@ -225,7 +224,7 @@ class tdbTransformer:
         
         pathTdb = os.path.normpath(pathTdb + os.sep  + directory)
         
-        tr2 = TestResult("Extraction du chemin de la tdb","Info : le chemin utiliser pour les images dans la tdb : %s" % (pathTdb), self.__pathExists(pathTdb), ResultComment("le chemin utiliser pour les images dans la tdb [%s] n'est pas valide" % (pathTdb)))
+        tr2 = TestResult("Extraction du chemin de la tdb","Info : le chemin utiliser pour les images dans la tdb : %s" % (pathTdb), pathExists(pathTdb), ResultComment("le chemin utiliser pour les images dans la tdb [%s] n'est pas valide" % (pathTdb)))
         tr.addTestResult(tr2)
         if not tr.getResultBool():
            return tr
@@ -250,7 +249,7 @@ class tdbTransformer:
             facteurX = resolutionX / resolutionVoulu
             facteurY = resolutionY / resolutionVoulu
             
-            tr.addTestResult(self.__transformTDBDossierOutput(inputFileName, outputDir, pathTdb, facteurX, facteurY))
+            tr.addTestResult(self.__transformTDBDossierOutput(inputFileName, os.curdir, pathTdb, facteurX, facteurY))
         
             #On incremente la progress Barre et positionne feature sur la feature suivante
             count += 1
@@ -258,8 +257,9 @@ class tdbTransformer:
             feature = walltex.GetNextFeature()
         
         #On suppr la dossier tmp
-        self.__cleanPath(os.path.normpath(outputDir + os.sep  + "tmp"))
-            
+        self.__cleanPath(os.path.normpath(os.curdir + os.sep  + "tmp"))
+        return tr
+    
     def __transformTDBDossierOutput(self,inputFileName, outputDir, pathTdb,facteurX, facteurY):
         
         #On recupere le nom du fichier
@@ -267,39 +267,33 @@ class tdbTransformer:
         
         tr = TestResult("Traitement de l'image " + nomFichier, "")
         
-        os.chdir(outputDir)
+        #os.chdir(outputDir)
+        
         #On resize la texture
         #print "resizeTexture : %s => %s" % (os.path.normpath(pathTdb + os.sep + nomFichier), os.path.normpath(outputDir + os.sep + "tmp" + os.sep + nomFichier))
         tr += resizeTexture(os.path.normpath(pathTdb + os.sep + nomFichier), os.path.normpath(outputDir + os.sep + "tmp" + os.sep + nomFichier), facteurX, facteurY)
         
         #TODO: Est ce que le deuxieme test est neccessaire ?
-        if tr.getResultBool() and os.path.exists(os.path.normpath(outputDir + os.sep + "tmp" + os.sep + nomFichier)):
+        if tr.getResultBool(): #os.path.exists(os.path.normpath(outputDir + os.sep + "tmp" + os.sep + nomFichier))
             #On fait le facteur de 2
             tr += resizeTexturePowerOfTwo(os.path.normpath(outputDir + os.sep + "tmp" + os.sep + nomFichier),os.path.normpath(outputDir + os.sep + nomFichier))
         else:
-            tr += Result(False,ResultComment("Error : le Premier zoom ne s'est pas bien passer, voir dans les logs"))
+            tr += Result(False,ResultComment("Error : le Premier zoom ne s'est pas bien passer, pas de "))
         
         return tr 
-            
-    def __pathExists(self,pathName):
-        if(pathName==""):
-            return False #car os.path.normPath renvoie "." quand on lui passe ""
-        else:
-            normPath = os.path.normpath(pathName)
-            return (os.path.exists(normPath) or (len(glob.glob(normPath))>0))
     
     def __createArboOutputDir(self,dir,trace):
-        tr = TestResult("Cree les dossiers temporaire" ,"",self.__pathExists(dir),ResultComment("Error : Le dossier de sortie n'existe de pas, veuillez le creer"))
+        tr = TestResult("Cree les dossiers temporaire" ,"",pathExists(dir),ResultComment("Error : Le dossier de sortie n'existe de pas, veuillez le creer"))
         if tr.getResultBool():
-            os.chdir(dir)
+            os.chdir(dir) #On change de curdir
         else:
             trace.addTestResult(tr)
             return
         
-        if self.__pathExists(os.path.normpath(dir + os.sep + "tmp")):
+        if pathExists(os.path.normpath(os.curdir + os.sep + "tmp")):
             pass
         else:
-            os.mkdir(os.path.normpath(dir + os.sep + "tmp"))
+            os.mkdir(os.path.normpath(os.curdir + os.sep + "tmp"))
         
         trace.addTestResult(tr)
             
@@ -376,78 +370,241 @@ def resizeTexture(inputFileName,outputFileName,resizeFactorX,resizeFactorY):
     return resizeTextureWithSizes(inputFileName,outputFileName,newXSize,newYSize)
 
 def resizeTextureWithSizes(inputFileName,outputFileName,xsize,ysize):
-    ok=True
-    try:
-        os.system("gdal_zoomPVM -of PNG -s "+str(xsize)+" "+str(ysize)+" -m quality -in "+inputFileName+" -out "+outputFileName+" > /dev/null 2>&1") #+" > /dev/null 2>&1"
-    except:
-        ok=False
-    return Result(ok,ResultComment("Fatal error : can't execute this command\n" + "gdal_zoomPVM -of PNG -s "+str(xsize)+" "+str(ysize)+" -m quality -in "+inputFileName+" -out "+outputFileName))
+    cmd = "gdal_zoomPVM -of PNG -s "+str(xsize)+" "+str(ysize)+" -m quality -in "+inputFileName+" -out "+outputFileName+" > /dev/null 2>&1"        
+    return execCommand(cmd)
    # print "gdal_zoomPVM -of PNG -s "+str(xsize)+" "+str(ysize)+" -m quality -in "+inputFileName+" -out "+outputFileName
+
+def testOutputDir(out):
+    tr = TestResult("Test sur le dossier output","")
+    if os.path.abspath(out):
+        tr += Result(True,ResultComment(),ResultComment("Info : le chemin du dossier output est un chemin absolut"))
+        tr += Result(pathExists(out),ResultComment("Le dossier d'input n'a pas ete cree, l'utilisateur doit le creer [%s]" % (out)))
+    else:
+        tr += Result(True,ResultComment(),ResultComment("Info : le chemin du dossier output est un chemin relatif"))
+        tr += Result(pathExists(os.path.normpath(os.curdir + os.sep + out)),ResultComment("Le dossier d'input n'a pas ete cree, l'utilisateur doit le creer [%s]" %(os.curdir + os.sep + out)))
+    return tr
+
+def execCommand(command="",logFileName="",timeout_duration=120,searchProgram=True):
+    execTestResult = TestResult("Execution","Essaie d'executer la commande '"+command+"'")
+    
+    execTestResult += Result(isinstance(command,basestring),ResultComment("Execution impossible : la commande a executer n'est pas une chaine de caractere."),ResultComment(""))        
+    execTestResult += Result(isinstance(timeout_duration,int) and (not isinstance(timeout_duration,bool)),ResultComment("Execution impossible : la valeur de timeout en parametre n'est pas un entier."),ResultComment(""))        
+    execTestResult += Result(isinstance(searchProgram,bool),ResultComment("Execution impossible : la variable 'searchProgram' en parametre n'est pas un booleen."),ResultComment(""))        
+
+    if(execTestResult.getResultBool()):        
+    
+        if(searchProgram):
+            #Recherche du programme (1er element de la commande)
+            commandSplitList = string_multiSplit(command,[" "])
+            if(len(commandSplitList)<1):
+                execTestResult += Result(False,ResultComment("Execution impossible. La commande est vide."),ResultComment(""))        
+            else:
+                softwareName = commandSplitList[0]
+            execTestResult += findExecutable(softwareName)
+        
+        if(execTestResult.getResultBool()):
+        
+        #    #Execution "old school" sans timeout
+        #    execResult = execute(command)
+        #    execTestResult += Result(execResult,ResultComment("Execution impossible. Valeur de retour non nulle."),ResultComment("ATTENTION : Le test de la valeur de retour n'est pas encore code (pb d'uniformite entre programmes)..."))            
+            
+            #Execution avec "time out"
+            defaultTimeOutValue = "timeout"
+
+            #si besoin de logger sortie
+            if(logFileName):
+                loggingCommand = " >> "+logFileName+" 2>&1 ;"                
+                executionDirectory = os.getcwd()                     
+                
+                #Ajout d'un commentaire de debut d'execution
+                executionBeginDateString = datetime.datetime.now().strftime("(%a) %d/%m/%Y %Hh%Mmin %Ssec")
+                beginCommand = "python -c 'print \"*******************************************\";print \"************  EXECUTION START  ************\";print \"* Execution Directory : "+executionDirectory+"\";print \"* Commande : "+command+"\";print \"* Date : "+executionBeginDateString+"\";print \"*******************************************\";'"                
+                timeout(func=execute,kwargs={"command":beginCommand+loggingCommand},timeout_duration=timeout_duration,default=defaultTimeOutValue)                                
+                
+                #Execution
+                execResult = timeout(func=execute,kwargs={"command":command+loggingCommand},timeout_duration=timeout_duration,default=defaultTimeOutValue)                                
+
+                #Ajout d'un commentaire de fin d'execution
+                executionEndDateString = datetime.datetime.now().strftime("(%a) %d/%m/%Y %Hh%Mmin %Ssec")
+                endCommand = "python -c 'print \"*******************************************\";print \"*************  EXECUTION END  *************\";print \"* Date : "+executionEndDateString+"\";print \"*******************************************\";'"                
+                timeout(func=execute,kwargs={"command":endCommand+loggingCommand},timeout_duration=timeout_duration,default=defaultTimeOutValue)
+
+            else:
+                execResult = timeout(func=execute,kwargs={"command":command},timeout_duration=timeout_duration,default=defaultTimeOutValue)
+
+            #Si arret a cause d'un timeout
+            if(execResult==defaultTimeOutValue):
+                execTestResult += Result(False,ResultComment("Execution impossible, a cause d'un time out (>"+str(timeout_duration)+"seconds). ATTENTION, le programme tourne peut-etre encore !!!"),ResultComment(""))
+            else:                
+                execTestResult += Result(execResult,ResultComment("Execution apparemment impossible. Valeur de retour non nulle."),ResultComment(""))
+    
+    return execTestResult
+
+def timeout(func, args=(), kwargs={}, timeout_duration=3600, default=False):
+    import threading
+    class InterruptableThread(threading.Thread):
+        def __init__(self):
+            threading.Thread.__init__(self)
+            self.result = None
+
+        def run(self):
+            try:
+                self.result = func(*args, **kwargs)
+            except:
+                self.result = default             
+
+    it = InterruptableThread()
+    it.start()
+    it.join(timeout_duration)
+    if it.isAlive():
+        return default
+    else:
+        return it.result  
+
+def pathExists(pathName):
+    if(pathName==""):
+        return False #car os.path.normPath renvoie "." quand on lui passe ""
+    else:
+        normPath = os.path.normpath(pathName)
+        return (os.path.exists(normPath) or (len(glob.glob(normPath))>0))
+
+def findExecutable(executableName):
+    findExecutableTestResult = TestResult("Recherche de l'executable '"+executableName+"' dans le SYSTEM PATH","")
+    systemPath = os.getenv("PATH")
+    findExecutableTestResult += Result((systemPath is not None),ResultComment("Impossible de recuperer le SYSTEM PATH"),ResultComment(""))
+    
+    if(findExecutableTestResult.getResultBool()==False):
+        return findExecutableTestResult
+    
+    splitStringList = string_multiSplit(systemPath,[";"]) #WINDOWS
+    baseDirList = []
+    if(len(splitStringList)==0):
+        findExecutableTestResult += Result(False,ResultComment("SYSTEM PATH is not valid"),ResultComment(""))
+        return findExecutableTestResult
+    #seulement WINDOWS possible
+    elif(len(splitStringList)>1):
+        baseDirList = splitStringList        
+    else:
+        splitStringList = string_multiSplit(systemPath,[":"]) #LINUX
+        
+        if(len(splitStringList)==0):
+            findExecutableTestResult += Result(False,ResultComment("SYSTEM PATH is not valid"),ResultComment(""))
+            return findExecutableTestResult        
+        #LINUX OU WINDOWS (avec un seul repertoire dans le PATH)
+        elif(len(splitStringList)>=1):
+            baseDirList = splitStringList
+    
+    findExecutableTestResult += fileExistInBaseDirList(baseDirList,executableName)
+    return findExecutableTestResult
+
+def fileExistInBaseDirList(baseDirList,fileBaseName):
+    if(len(baseDirList)==0):
+        return Result(False,ResultComment("La liste des repertoires est vide."))
+    if(len(fileBaseName)==0):
+        return Result(False,ResultComment("Le nom de fichier est vide."))
+    
+    i = 0
+    exists = False
+    while( (i<len(baseDirList)) and (not exists) ):    
+        baseDir = baseDirList[i]
+        exists = fileExists(baseDir+"/"+fileBaseName)
+        i += 1
+
+    if(exists):
+        return Result(True,ResultComment(""),ResultComment(""))
+        #return Result(True,ResultComment(""),ResultComment("Le fichier '"+fileBaseName+"' a ete trouve dans le repertoire '"+str(baseDir)+"'."))
+    else:
+        return Result(False,ResultComment("Le fichier '"+fileBaseName+"' n'a pas ete trouve a partir des repertoires '"+str(baseDirList)+"'."))
+
+def fileExists(fileName):
+    return os.path.isfile(fileName)
+def execute(command):
+    if(len(command)==0):
+        return False
+    result = os.system(command)
+    return (result==0)
 
 if __name__ == '__main__':
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "i:r:o:d:", ["help","input==","ressource==","output==","directory=="])
-    except getopt.error, msg:
-        print msg
-        printUsage()
-    
-    inputPassed = False
-    inputFileName = ""
-    tdbOutputDirPassed = False
-    tdbOutputDir = ""
-    resolutionPassed = False
-    resolution = ""
-    directoryPassed = False
-    directory = ""
-    
-    for opt, arg in opts:
-        if opt in ("-i"):
-            inputPassed = True
-            inputFileName = arg
-        elif opt in ("-o"):
-            tdbOutputDirPassed = True
-            tdbOutputDir = arg
-        elif opt in ("-r"):
-            resolutionPassed = True
-            resolution = arg
-        elif opt in ("-d"):
-            directoryPassed = True
-            directory = arg
-        else:
+        try:
+            opts, args = getopt.getopt(sys.argv[1:], "i:r:o:d:", ["help","input==","ressource==","output==","directory=="])
+        except getopt.error, msg:
+            print msg
             printUsage()
     
-    if(not (inputPassed and (tdbOutputDirPassed and resolutionPassed)) ):
-        printUsage()
-    else:
-        arTestResultsHandler = HTMLArTestResultsHandler()
-        fileDateString = datetime.datetime.now().strftime("%Y%m%d_%Hh%Mmin%Ssec")
-        outputHTMLFilename = tdbOutputDir+"/log_tdb_publisher_"+fileDateString+".html"#"_"+machineName+"_"+userName+".html"        
-        initHtmlOutputTestResult = TestResult("Initialisation du log de sortie HTML","Fichier : "+outputHTMLFilename)
-        arTestResultsHandler.addTestResult(initHtmlOutputTestResult)
-        try:
-            outputHTMLFile = open(outputHTMLFilename,"w")    
-        except:
-            initHtmlOutputTestResult += Result(False,ResultComment("Impossible d'ouvrir le fichier en ecriture."))
-            arTestResultsHandler.addTestResult(_initHtmlOutputTestResult)
-            print "Fatal error : ..."
-        else:
-            #Initialisation de la connection
-            connec = connectPostGis(inputFileName,"tdb")
-            arTestResultsHandler.addTestResult(connec.getTrace())
-            #L'initialisation du tdb Transfromer avec la connection deja initialisee
-            tdbT = tdbTransformer(connec)
-            arTestResultsHandler.addTestResult(tdbT.getTraceInit())
-            #Tranformation!!!
-            trTrans = tdbT.convertToPNG(tdbOutputDir,resolution,directory)
-            arTestResultsHandler.addArTestResultCollection(trTrans)
-            #Ecriture du log
-            arTestResultsHandler.saveAsHTML(outputHTMLFile)
-            outputHTMLFile.close()
-            os.chmod(outputHTMLFilename,0777)
-            if trTrans.getResultBool():
-                print "Done."
-                sys.exit(0)
+        inputPassed = False
+        inputFileName = ""
+        tdbOutputDirPassed = False
+        tdbOutputDir = ""
+        resolutionPassed = False
+        resolution = ""
+        directoryPassed = False
+        directory = ""
+        
+        for opt, arg in opts:
+            if opt in ("-i"):
+                inputPassed = True
+                inputFileName = arg
+            elif opt in ("-o"):
+                tdbOutputDirPassed = True
+                tdbOutputDir = arg
+            elif opt in ("-r"):
+                resolutionPassed = True
+                resolution = arg
+            elif opt in ("-d"):
+                directoryPassed = True
+                directory = arg
             else:
-                print "L'execution ne s'est pas terminee correctement."
-                print "Voir le log '"+outputHTMLFilename+"'"
+                printUsage()
+        
+        if(not (inputPassed and (tdbOutputDirPassed and resolutionPassed)) ):
+            printUsage()
+        else:
+            arTestResultsHandler = HTMLArTestResultsHandler()
+            #Test si le dossier outputExiste
+            tr = testOutputDir(tdbOutputDir)
+            if not tr.getResultBool(): #Pas de dossier input valid
+                print tr.getErrorResultComment()
+                print "\nDossier de sortie invalid, l'utilisateur doit le creer"
+                print "Sortie du programme"
                 sys.exit(1)
+            
+            arTestResultsHandler.addTestResult(tr)
+            #Le fichier de log
+            fileDateString = datetime.datetime.now().strftime("%Y%m%d_%Hh%Mmin%Ssec")
+            outputHTMLFilename = tdbOutputDir+"/log_tdb_publisher_"+fileDateString+".html"#"_"+machineName+"_"+userName+".html"        
+            initHtmlOutputTestResult = TestResult("Initialisation du log de sortie HTML","Fichier : "+outputHTMLFilename)
+            arTestResultsHandler.addTestResult(initHtmlOutputTestResult)
+            try:
+                outputHTMLFile = open(outputHTMLFilename,"w")    
+            except:
+                initHtmlOutputTestResult += Result(False,ResultComment("Impossible d'ouvrir le fichier en ecriture."))
+                arTestResultsHandler.addTestResult(initHtmlOutputTestResult)
+                print "Fatal error : Sortie du programme"
+                sys.exit(1)
+            else:
+                #Initialisation de la connection
+                connec = connectPostGis(inputFileName,"tdb")
+                arTestResultsHandler.addTestResult(connec.getTrace())
+                #L'initialisation du tdb Transfromer avec la connection deja initialisee
+                tdbT = tdbTransformer(connec)
+                arTestResultsHandler.addTestResult(tdbT.getTraceInit())
+                #Tranformation!!!
+                trTrans = tdbT.convertToPNG(tdbOutputDir,resolution,directory)
+                arTestResultsHandler.addArTestResult(trTrans)
+                #Ecriture du log
+                arTestResultsHandler.saveAsHTML(outputHTMLFile)
+                outputHTMLFile.close()
+                os.chmod(os.curdir,0777) #Met dans le dossier de sortie
+                if trTrans.getResultBool():
+                    print "Done."
+                    sys.exit(0)
+                else:
+                    print "L'execution ne s'est pas terminee correctement."
+                    print "Voir le log '"+outputHTMLFilename+"'"
+                    sys.exit(1)
+    except(KeyboardInterrupt):
+        print ""
+        print "> ERREUR: Interruption du programme par l'utilisateur !"
+        print "> Provoque sortie du programme."
+        sys.exit(1)
